@@ -2,6 +2,11 @@
 
 <tryton>
     <data>
+        <menuitem
+            name="US Census"
+            parent="country.menu_country"
+            sequence="50"
+            id="menu_census"/>
 
         <record model="ir.ui.view" id="class_code_view_form">
             <field name="model">census.class_code</field>
@@ -51,7 +56,7 @@
         </record>
 
         <record model="ir.action.act_window" id="act_census_region_tree">
-            <field name="name">Census Regions</field>
+            <field name="name">Administrative Regions</field>
             <field name="res_model">census.region</field>
             <field name="domain" eval="[('parent', '=', None)]" pyson="1"/>
         </record>
@@ -66,7 +71,7 @@
             <field name="act_window" ref="act_census_region_tree"/>
         </record>
         <menuitem
-            parent="country.menu_country"
+            parent="menu_census"
             action="act_census_region_tree"
             sequence="20"
             id="menu_census_region_tree"/>
@@ -110,26 +115,52 @@
             <field name="field_childs">children</field>
             <field name="name">place_tree</field>
         </record>
-        <record model="ir.action.act_window" id="act_place_form">
+        <record model="ir.ui.view" id="place_view_list">
+            <field name="model">census.place</field>
+            <field name="type">tree</field>
+            <field name="name">place_list</field>
+        </record>
+
+        <record model="ir.action.act_window" id="act_place_tree">
             <field name="name">Places</field>
             <field name="res_model">census.place</field>
             <field name="domain" eval="[('parent', '=', None)]" pyson="1"/>
         </record>
-        <record model="ir.action.act_window.view" id="act_place_form_view1">
+        <record model="ir.action.act_window.view" id="act_place_tree_view1">
             <field name="sequence" eval="10"/>
             <field name="view" ref="place_view_tree"/>
-            <field name="act_window" ref="act_place_form"/>
+            <field name="act_window" ref="act_place_tree"/>
         </record>
-        <record model="ir.action.act_window.view" id="act_place_form_view2">
+        <record model="ir.action.act_window.view" id="act_place_tree_view2">
             <field name="sequence" eval="20"/>
             <field name="view" ref="place_view_form"/>
-            <field name="act_window" ref="act_place_form"/>
+            <field name="act_window" ref="act_place_tree"/>
         </record>
         <menuitem
-            parent="menu_census_region_tree"
-            action="act_place_form"
+            parent="menu_census"
+            action="act_place_tree"
             sequence="20"
-            id="menu_place_form"/>
+            id="menu_place_tree"/>
+
+        <record model="ir.action.act_window" id="act_place_list">
+            <field name="name">Places</field>
+            <field name="res_model">census.place</field>
+        </record>
+        <record model="ir.action.act_window.view" id="act_place_list_view1">
+            <field name="sequence" eval="10"/>
+            <field name="view" ref="place_view_list"/>
+            <field name="act_window" ref="act_place_list"/>
+        </record>
+        <record model="ir.action.act_window.view" id="act_place_list_view2">
+            <field name="sequence" eval="20"/>
+            <field name="view" ref="place_view_form"/>
+            <field name="act_window" ref="act_place_list"/>
+        </record>
+        <menuitem
+            parent="menu_place_tree"
+            action="act_place_list"
+            sequence="10"
+            id="menu_place_list"/>
 
         <record model="ir.action.act_window" id="act_place_by_region">
             <field name="name">Places by Census Region</field>

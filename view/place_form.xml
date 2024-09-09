@@ -14,10 +14,10 @@
     <label name="subdivision"/>
     <field name="subdivision"/>
 
-    <label name="code_gnis"/>
-    <field name="code_gnis"/>
     <label name="code_fips"/>
     <field name="code_fips"/>
+    <label name="code_gnis"/>
+    <field name="code_gnis"/>
     <label name="level"/>
     <field name="level"/>
 
