@@ -5,14 +5,8 @@ __all__ = ['register']
 
 def register():
     # Prevent import of backend when importing scripts
-    from . import census
+    from . import country
 
     Pool.register(
-        census.ClassCode,
-        census.Place,
-        census.Region,
+        country.Subdivision,
         module='country_uscensus', type_='model')
-    Pool.register(
-        module='country_uscensus', type_='wizard')
-    Pool.register(
-        module='country_uscensus', type_='report')

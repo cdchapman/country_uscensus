@@ -9,11 +9,9 @@ import os
 import sys
 from argparse import ArgumentParser
 
-try:
-    from urllib.error import HTTPError
-    from urllib.request import urlopen
-except ImportError:
-    from urllib2 import urlopen, HTTPError
+from urllib.error import HTTPError
+from urllib.parse import urljoin
+from urllib.request import urlopen
 
 from io import BytesIO, TextIOWrapper
 
@@ -33,18 +31,16 @@ except ImportError:
     prog = os.path.basename(sys.argv[0])
     sys.exit("proteus must be installed to use %s" % prog)
 
-DIVISIONS = {
-    'D1': ['09', '23', '25', '33', '44', '50'],
-    'D2': ['34', '36', '42'],
-    'D3': ['17', '18', '26', '39', '55'],
-    'D4': ['19', '20', '27', '29', '31', '38', '46'],
-    'D5': ['10', '11', '12', '13', '24', '37', '45', '51', '54'],
-    'D6': ['01', '21', '28', '47'],
-    'D7': ['05', '22', '40', '48'],
-    'D8': ['04', '08', '16', '30', '32', '35', '49', '56'],
-    'D9': ['02', '06', '15', '41', '53'],
-    }
-REGION2PARENT = {c: p for p, r in DIVISIONS.items() for c in r}
+CLASSCODES = {
+    'independent city (united states)': ['C7'],
+    'consolidated city-county': ['C3'],
+    'county': ['H1', 'H4', 'H5', 'H6'],
+    'county subdivision': [
+        'T1', 'T5', 'T9', 'Z1', 'Z2', 'Z3', 'Z5', 'Z7', 'Z9'],
+    'division': ['M2', 'U1', 'U2'],
+    'incorporated place': ['C1', 'C2', 'C5', 'C6', 'C8', 'C9'],
+}
+CLASSCODES2TYPE = {c: t for t, a in CLASSCODES.items() for c in a}
 
 def _progress(iterable):
     if ProgressBar:
@@ -54,11 +50,6 @@ def _progress(iterable):
         pbar = iter
     return pbar(iterable)
 
-def _get_language_codes():
-    Language = Model.get('ir.lang')
-    languages = Language.find([('translatable', '=', True)])
-    for l in languages:
-        yield l.code
 
 def fetch(url):
     sys.stderr.write('Fetching')
@@ -70,182 +61,177 @@ def fetch(url):
     print('.', file=sys.stderr)
     return data
 
-def get_states(code):
-    Place = Model.get('census.place')
-    return {c.code_fips: c for c in Place.find([('country.code', '=', code)])}
 
-def update_states(code, states):
-    print("Update states", file=sys.stderr)
-    CensusRegion = Model.get('census.region')
-    Place = Model.get('census.place')
+def get_states():
     Country = Model.get('country.country')
     Subdivision = Model.get('country.subdivision')
 
-    def get_country(code):
-        country = countries.get(code)
-        if not country:
-            try:
-                country, = Country.find([('code', '=', code)])
-            except ValueError:
-                sys.exit("Error missing country with code %s" % code)
-            countries[code] = country
-        return country
-    countries = {}
+    try:
+        _, = Country.find([('code', '=', 'US')])
+    except ValueError:
+        sys.exit("Error finding the country of the United States: "
+                 "countries must be imported first using the "
+                 "'trytond_import_countries' script.")
 
-    def get_subdivision(country, code):
-        code = '%s-%s' % (country, code)
-        subdivision = subdivisions.get(code)
-        if not subdivision:
-            try:
-                subdivision, = Subdivision.find([('code', '=', code)])
-            except ValueError:
-                return
-            subdivisions[code] = subdivision
-        return subdivision
-    subdivisions = {}
+    domain = [
+        ('country.code', '=', 'US'),
+        ('parent', '=', None),
+    ]
 
-    country = get_country(code)
+    return {c.code[-2:]: c for c in Subdivision.find(domain)}
 
-    code2region = {a.code: a for a in CensusRegion.find([])}
+def get_counties(code=None):
+    Subdivision = Model.get('country.subdivision')
 
-    data = fetch('https://www2.census.gov/geo/docs/reference/codes2020/national_state2020.txt')
-    f= TextIOWrapper(BytesIO(data), encoding='utf-8')
+    domain = [
+        ('country.code', '=', 'US'),
+        ('fips_level', '=', 'county'),
+    ]
+
+    if code:
+        domain.append(('parent.code', '=', code))
+
+    return {
+        (c.parent.code, c.code_fips): c for c in Subdivision.find(domain)}
+
+def get_places(code=None):
+    Subdivision = Model.get('country.subdivision')
+
+    domain = [
+        ('country.code', '=', 'US'),
+        ('fips_level', '=', 'place'),
+    ]
+
+    if code:
+        domain.append(('parent.parent.code', '=', code))
+
+    return {(c.parent.parent.code, c.code_fips): c
+            for c in Subdivision.find(domain)}
+
+def update_states(subdivisions, data):
+    print("Update states", file=sys.stderr)
+    Subdivision = Model.get('country.subdivision')
 
     records = []
-    for row in _progress(list(csv.DictReader(f, delimiter='|'))):
-        code_fips = row['STATEFP']
-        if code_fips in states:
-            record = states[code_fips]
+    for row in _progress(list(csv.DictReader(
+            TextIOWrapper(BytesIO(data), encoding='utf-8'), delimiter='|'))):
+        code = row['STATE']
+        if code in subdivisions:
+            record = subdivisions[code]
         else:
-            record = Place(code_fips=code_fips, country=country)
-        record.name = row['STATE_NAME']
+            print(f"Could not find a subdivision with code '{code}'.")
+            continue
+
+        record.code_fips = row['STATEFP']
         record.code_gnis = int(row['STATENS'])
-        record.subdivision = get_subdivision(country.code, row['STATE'])
-        record.region = code2region.get(REGION2PARENT.get(code_fips))
 
         records.append(record)
 
-    Place.save(records)
+    Subdivision.save(records)
     return {c.code_fips: c for c in records}
 
-def get_counties(code):
-    Place = Model.get('census.place')
-    return {(c.subdivision.code, c.code_fips): c for c in Place.find([])}
-#    return {(c.subdivision.code, c.code_fips): c for c in Place.find([('subdivision.code', '=', code)])}
-
-def update_counties(states, counties):
+def update_counties(states, counties, data):
     print("Update counties", file=sys.stderr)
-    ClassCode = Model.get('census.class_code')
-    Place = Model.get('census.place')
+    Subdivision = Model.get('country.subdivision')
 
-    # 'https://www2.census.gov/geo/docs/reference/codes2020/cou/st49_ut_cou2020.txt' 
-    data = fetch('https://www2.census.gov/geo/docs/reference/codes2020/national_county2020.txt')
-    f= TextIOWrapper(BytesIO(data), encoding='utf-8')
-
-    class_codes = {c.code: c for c in ClassCode.find([])}
-    unknown_class_codes = set()
     records = []
-    for row in _progress(list(csv.DictReader(f, delimiter='|'))):
+    for row in _progress(list(csv.DictReader(
+            TextIOWrapper(BytesIO(data), encoding='utf-8'), delimiter='|'))):
         state = states[row['STATEFP']]
-        subdivision_code = state.subdivision.code
+        subdivision_code = state.code
         county_fips = row['COUNTYFP']
         if (subdivision_code, county_fips) in counties:
             record = counties[(subdivision_code, county_fips)]
         else:
-            record = Place(code_fips=county_fips,
-                    subdivision=state.subdivision, country=state.country)
+            record = Subdivision(parent=state, code_fips=county_fips)
         record.name = row['COUNTYNAME']
         record.code_gnis = int(row['COUNTYNS'])
-        class_code = row['CLASSFP']
-        record.parent = state
-        record.region = state.region
-        if class_code in class_codes:
-            record.class_code = class_codes[class_code]
-        else:
-            record.class_code = None
-            if class_code not in unknown_class_codes:
-                print("Unknown class code: %s" % class_code,
-                        file=sys.stderr)
-                unknown_class_codes.add(class_code)
+        record.type = CLASSCODES2TYPE.get(row['CLASSFP'])
+        record.country = state.country
+
         records.append(record)
 
-    Place.save(records)
-    return {(c.subdivision.code, c.code_fips): c for c in records}
+    Subdivision.save(records)
+    return {(c.parent.code, c.code_fips): c for c in records}
 
-def get_places(code):
-    Place = Model.get('census.place')
-    #return {c.code_fips: c for c in Place.find([('level', '=', level)])}
-    return {(c.subdivision.code, c.code_fips): c for c in Place.find([])}
-
-def update_places(states, counties, places):
+def update_places(states, counties, places, data):
     print("Update places", file=sys.stderr)
-    ClassCode = Model.get('census.class_code')
-    Place = Model.get('census.place')
+    Subdivision = Model.get('country.subdivision')
 
-    # 'https://www2.census.gov/geo/docs/reference/codes2020/place_by_cou/st49_ut_place_by_county2020.txt'
-    data = fetch('https://www2.census.gov/geo/docs/reference/codes2020/national_place_by_county2020.txt')
-    f= TextIOWrapper(BytesIO(data), encoding='utf-8')
-
-    class_codes = {c.code: c for c in ClassCode.find([])}
-    unknown_class_codes = set()
     records = []
-    for row in _progress(list(csv.DictReader(f, delimiter='|'))):
+    for row in _progress(list(csv.DictReader(
+            TextIOWrapper(BytesIO(data), encoding='utf-8'), delimiter='|'))):
         state = states[row['STATEFP']]
-        subdivision_code = state.subdivision.code
+        subdivision_code = state.code
         county = counties[(subdivision_code, row['COUNTYFP'])]
         place_fips = row['PLACEFP']
         if (subdivision_code, place_fips) in places:
             record = places[(subdivision_code, place_fips)]
         else:
-            record = Place(code_fips=place_fips,
-                    subdivision=state.subdivision, country=state.country)
+            record = Subdivision(parent=county, code_fips=place_fips)
         record.name = row['PLACENAME']
         record.code_gnis = int(row['PLACENS'])
-        class_code = row['CLASSFP']
-        record.parent = county
-        record.region = state.region
-        if class_code in class_codes:
-            record.class_code = class_codes[class_code]
-        else:
-            record.class_code = None
-            if class_code not in unknown_class_codes:
-                print("Unknown class code: %s" % class_code,
-                        file=sys.stderr)
-                unknown_class_codes.add(class_code)
+        record.type = CLASSCODES2TYPE.get(row['CLASSFP'])
+        record.country = state.country
+
         records.append(record)
 
-    Place.save(records)
+    Subdivision.save(records)
 
-def main(database, codes, config_file=None):
+def main(database, args, config_file=None):
     config.set_trytond(database, config_file=config_file)
     with config.get_config().set_context(active_test=False):
-        do_import(codes)
+        do_import(args)
 
-def do_import(codes):
-    states = get_states('US')
-    states = update_states('US', states)
-    #translate_states(states)
+def do_import(args):
+    _base = 'https://www2.census.gov/geo/docs/reference/codes2020/'
+    _states = 'national_state2020.txt'
+    _counties = 'national_county2020.txt'
+    _county = 'cou/st{fips}_{code}_cou2020.txt'
+    _places = 'national_place_by_county2020.txt'
+    _place = 'place_by_cou/st{fips}_{code}_place_by_county2020.txt'
 
-    for code in codes:
+    states_by_code = get_states()
+    states = update_states(states_by_code, fetch(urljoin(_base, _states)))
+
+    if args.all:
+        county_url = urljoin(_base, _counties)
+        counties = get_counties()
+        counties = update_counties(states, counties, fetch(county_url))
+
+        place_url = urljoin(_base, _places)
+        places = get_places()
+        update_places(states, counties, places, fetch(place_url))
+
+    for code in args.codes:
         print(code, file=sys.stderr)
-        code = 'US-%s' % code.upper()
-        counties = get_counties(code)
-        counties = update_counties(states, counties)
-        #translate_counties(counties)
-        places = get_places(code)
-        update_places(states, counties, places)
+        state = states_by_code[code.upper()]
+        code_subdivision = 'US-%s' % code.upper()
+
+        counties = get_counties(code=code_subdivision)
+        county_url = urljoin(_base, _county.format(
+            fips=state.code_fips, code=code.lower()))
+        counties = update_counties(states, counties, fetch(county_url))
+
+        places = get_places(code=code_subdivision)
+        place_url = urljoin(_base, _place.format(
+            fips=state.code_fips, code=code.lower()))
+        update_places(states, counties, places, fetch(place_url))
+
 
 def run():
     parser = ArgumentParser()
     parser.add_argument('-d', '--database', dest='database', required=True)
     parser.add_argument('-c', '--config', dest='config_file',
         help='the trytond config file')
-    parser.add_argument('codes', nargs='+')
+    parser.add_argument('--all', action='store_true',
+        help='import codes for all states')
+    parser.add_argument('codes', nargs='*', default=[])
     if argcomplete:
         argcomplete.autocomplete(parser)
 
     args = parser.parse_args()
-    main(args.database, args.codes, args.config_file)
+    main(args.database, args, args.config_file)
 
 
 if __name__ == '__main__':

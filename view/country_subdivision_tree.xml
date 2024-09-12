@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<data>
+    <xpath expr="//field[@name='name']" position="before">
+        <field name="code_fips" optional="1"/>
+    </xpath>
+    <xpath expr="//field[@name='code']" position="after">
+        <field name="code_gnis" optional="1"/>
+    </xpath>
+</data>

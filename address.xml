@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+
+<tryton>
+    <data noupdate="1" depends="party">
+        <record model="party.address.subdivision_type" id="address_subdivision_us">
+            <field name="country_code">US</field>
+            <field name="types" eval="['district','state','outlying area']"/>
+        </record>
+    </data>
+</tryton>

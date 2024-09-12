@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+
+<tryton>
+    <data>
+        <record model="ir.ui.view" id="country_subdivision_view_form">
+            <field name="model">country.subdivision</field>
+            <field name="inherit" ref="country.subdivision_view_form"/>
+            <field name="name">country_subdivision_form</field>
+        </record>
+        <record model="ir.ui.view" id="country_subdivision_view_tree">
+            <field name="model">country.subdivision</field>
+            <field name="inherit" ref="country.subdivision_view_tree"/>
+            <field name="name">country_subdivision_tree</field>
+        </record>
+
+    </data>
+</tryton>
