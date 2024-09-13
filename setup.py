@@ -117,6 +117,6 @@ setup(name=name,
     [trytond.modules]
     country_uscensus = trytond.modules.country_uscensus
     [console_scripts]
-    trytond_import_places = trytond.modules.country_uscensus.scripts.import_places:run [data]
+    trytond_import_uscensus_subdivisions = trytond.modules.country_uscensus.scripts.import_uscensus_subdivisions:run [data]
     """,  # noqa: E501
     )
