@@ -19,7 +19,7 @@ This module imports FIPS codes as they were defined for the 2020 census.
 =========  ===================  =========================
  State      FIPS 5–2 (1987)      INCITS 28–2009 (R2019)
  County     FIPS 6–4 (1990)      INCITS 31–2009 (R2019)
- Place      FIPS 55-DC3 (1994)   INCITS 446–2008 (R2018)
+ Place      FIPS 55–DC3 (1994)   INCITS 446–2008 (R2018)
 =========  ===================  =========================
 
 .. _United States Census Bureau: https://www.census.gov/library/reference/code-lists/ansi.html
