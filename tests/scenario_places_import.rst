@@ -20,8 +20,7 @@ Import places::
     >>> us.save()
 
     >>> Subdivision = Model.get('country.subdivision')
-    >>> ut = Subdivision(name="Utah",
-    ...     code='US-UT', country=us, code_fips='49', code_gnis=999)
+    >>> ut = Subdivision(name="Utah", code='US-UT', country=us)
     >>> ut.save()
 
     >>> import_uscensus_subdivisions.do_import(['ut'])

@@ -7,7 +7,6 @@ from trytond.tools import is_full_text, lstrip_wildcard
 class Subdivision(metaclass=PoolMeta):
     __name__ = 'country.subdivision'
     _states = {
-        'required': Eval('_parent_country.code') == 'US',
         'invisible': Eval('_parent_country.code') != 'US',
         }
     code_gnis = fields.Integer("Feature ID", states=_states,
