@@ -22,9 +22,9 @@ This module imports FIPS codes as they were defined for the 2020 census.
  Place      FIPS 55–DC3 (1994)   INCITS 446–2008 (R2018)
 =========  ===================  =========================
 
-.. _United States Census Bureau: https://www.census.gov/library/reference/code-lists/ansi.html
+.. _Tryton: https://www.tryton.org/
 
-.. https://www.census.gov/programs-surveys/geography/guidance/geo-identifiers.html
+.. _United States Census Bureau: https://www.census.gov/library/reference/code-lists/ansi.html
 
 .. _INCITS: https://www.incits.org/
 
