@@ -1,6 +1,6 @@
-###############
-USCensus Module
-###############
+########################
+Country US Census Module
+########################
 
 The *Country US Census Module* augments Tryton_'s *Country* module with
 geographical feature data used by the `United States Census Bureau`_.
