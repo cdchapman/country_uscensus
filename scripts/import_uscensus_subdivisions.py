@@ -119,7 +119,6 @@ def update_states(subdivisions, data):
         if code in subdivisions:
             record = subdivisions[code]
         else:
-            print(f"Could not find a subdivision with code '{code}'.")
             continue
 
         record.code_fips = row['STATEFP']
@@ -178,12 +177,12 @@ def update_places(states, counties, places, data):
 
     Subdivision.save(records)
 
-def main(database, args, config_file=None):
+def main(database, codes, config_file=None):
     config.set_trytond(database, config_file=config_file)
     with config.get_config().set_context(active_test=False):
-        do_import(args)
+        do_import(codes)
 
-def do_import(args):
+def do_import(codes):
     _base = 'https://www2.census.gov/geo/docs/reference/codes2020/'
     _states = 'national_state2020.txt'
     _counties = 'national_county2020.txt'
@@ -194,7 +193,7 @@ def do_import(args):
     states_by_code = get_states()
     states = update_states(states_by_code, fetch(urljoin(_base, _states)))
 
-    if args.all:
+    if isinstance(codes, str) and codes == 'all':
         county_url = urljoin(_base, _counties)
         counties = get_counties()
         counties = update_counties(states, counties, fetch(county_url))
@@ -202,21 +201,22 @@ def do_import(args):
         place_url = urljoin(_base, _places)
         places = get_places()
         update_places(states, counties, places, fetch(place_url))
+    elif isinstance(codes, list) and len(codes) > 0:
+        for code in codes:
+            print(code, file=sys.stderr)
+            state = states_by_code[code.upper()]
 
-    for code in args.codes:
-        print(code, file=sys.stderr)
-        state = states_by_code[code.upper()]
-        code_subdivision = 'US-%s' % code.upper()
+            counties = get_counties(code=state.code)
+            county_url = urljoin(_base, _county.format(
+                fips=state.code_fips, code=code.lower()))
+            counties = update_counties(states, counties, fetch(county_url))
 
-        counties = get_counties(code=code_subdivision)
-        county_url = urljoin(_base, _county.format(
-            fips=state.code_fips, code=code.lower()))
-        counties = update_counties(states, counties, fetch(county_url))
-
-        places = get_places(code=code_subdivision)
-        place_url = urljoin(_base, _place.format(
-            fips=state.code_fips, code=code.lower()))
-        update_places(states, counties, places, fetch(place_url))
+            places = get_places(code=state.code)
+            place_url = urljoin(_base, _place.format(
+                fips=state.code_fips, code=code.lower()))
+            update_places(states, counties, places, fetch(place_url))
+    else:
+        sys.exit("No codes to process")
 
 
 def run():
@@ -225,13 +225,14 @@ def run():
     parser.add_argument('-c', '--config', dest='config_file',
         help='the trytond config file')
     parser.add_argument('--all', action='store_true',
-        help='import codes for all states')
+        help='import codes for all states (overrides codes)')
     parser.add_argument('codes', nargs='*', default=[])
     if argcomplete:
         argcomplete.autocomplete(parser)
 
     args = parser.parse_args()
-    main(args.database, args, args.config_file)
+    codes = 'all' if args.all else args.codes
+    main(args.database, codes, args.config_file)
 
 
 if __name__ == '__main__':

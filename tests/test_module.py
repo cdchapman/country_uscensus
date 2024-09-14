@@ -1,4 +1,3 @@
-
 from trytond.tests.test_tryton import ModuleTestCase
 
 
