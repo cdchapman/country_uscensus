@@ -9,9 +9,9 @@ The *Country US Census Module* extends the following concept:
 Subdivision
 ===========
 
-The *Subdivision* concept is extended to store the :abbr:`Federal Information
-Processing Standard (FIPS)` code and :abbr:`Geographical Name Information System
-(GNIS)` Feature ID.
+The *Subdivision* concept is extended to store the :abbr:`FIPS (Federal
+Information Processing Standards)` code and :abbr:`GNIS (Geographic Names
+Information System)` Feature ID.
 
 .. seealso::
 
@@ -24,7 +24,7 @@ Processing Standard (FIPS)` code and :abbr:`Geographical Name Information System
    larger geographic entities. For that reason, county and place FIPS codes are
    only unique within their respective state.
 
-   Also, FIPS codes are hierarchical whereas GNIS Feature IDs are assigned
+   Also FIPS codes are hierarchical whereas GNIS Feature IDs are assigned
    sequentially, based on the date of entry into the database.
 
    More info on these geo-identifiers:
