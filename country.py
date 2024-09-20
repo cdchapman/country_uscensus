@@ -54,12 +54,6 @@ class Subdivision(metaclass=PoolMeta):
 
         return [('code_fips', 'like', '_' * code_len)]
 
-    def get_rec_name(self, name):
-        if self.code_fips:
-            return '%s (%s)' % (self.name, self.code_fips)
-        else:
-            return self.name
-
     @classmethod
     def search_rec_name(cls, name, clause):
         _, operator, operand, *extra = clause
